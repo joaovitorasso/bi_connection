@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Power BI Metadata Editor</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome 6 -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <!-- Tabulator 6 -->
+  <link href="https://unpkg.com/tabulator-tables@6.2.1/dist/css/tabulator.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- ====================================================
+     TOP NAVBAR
+     ==================================================== -->
+<nav class="app-navbar">
+  <!-- Logo -->
+  <a class="app-logo" href="#">
+    <i class="fas fa-cube"></i>
+    <span>PBI Metadata Editor</span>
+  </a>
+
+  <div class="navbar-divider"></div>
+
+  <!-- Connection Status -->
+  <div class="connection-badge disconnected" id="connection-badge" title="Clique para conectar/desconectar">
+    <div class="connection-dot"></div>
+    <span id="connection-text">Desconectado</span>
+  </div>
+
+  <!-- Connect Button -->
+  <button class="btn-navbar btn-connect" id="btn-connect">
+    <i class="fas fa-plug"></i>
+    Conectar
+  </button>
+
+  <div class="navbar-divider"></div>
+
+  <!-- Pending Badge -->
+  <div class="pending-badge hidden" id="pending-badge">
+    <i class="fas fa-clock"></i>
+    <span id="pending-count">0</span> pendente(s)
+  </div>
+
+  <div class="navbar-spacer"></div>
+
+  <!-- Reload -->
+  <button class="btn-navbar btn-export" id="btn-reload" title="Recarregar metadados do modelo">
+    <i class="fas fa-sync-alt"></i>
+  </button>
+
+  <!-- Export Backup -->
+  <button class="btn-navbar btn-export" id="btn-export" title="Exportar backup dos metadados">
+    <i class="fas fa-download"></i>
+    Exportar
+  </button>
+
+  <!-- Discard -->
+  <button class="btn-navbar btn-discard" id="btn-discard" disabled title="Descartar todas as alteracoes pendentes">
+    <i class="fas fa-undo"></i>
+    Descartar
+  </button>
+
+  <!-- Save -->
+  <button class="btn-navbar btn-save" id="btn-save" disabled title="Salvar todas as alteracoes no modelo">
+    <i class="fas fa-save"></i>
+    Salvar
+  </button>
+</nav>
+
+<!-- ====================================================
+     MAIN LAYOUT
+     ==================================================== -->
+<div class="app-layout">
+
+  <!-- ---- SIDEBAR ---- -->
+  <aside class="app-sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Tabelas</span>
+      <span class="sidebar-stats" id="sidebar-stats">-</span>
+    </div>
+
+    <div class="sidebar-search">
+      <div class="sidebar-search-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" id="sidebar-search-input" placeholder="Filtrar tabelas...">
+      </div>
+    </div>
+
+    <div class="sidebar-list" id="sidebar-list">
+      <div class="empty-state" style="height:200px;">
+        <i class="fas fa-plug" style="font-size:28px;"></i>
+        <span style="font-size:12px;">Conecte-se a um modelo</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ---- MAIN CONTENT ---- -->
+  <main class="app-main">
+
+    <!-- Demo Banner -->
+    <div id="demo-banner" style="display:none;background:rgba(255,140,0,0.12);border-bottom:1px solid rgba(255,140,0,0.25);padding:6px 14px;align-items:center;gap:8px;font-size:12px;color:#ffb74d;">
+      <i class="fas fa-flask"></i>
+      <strong>Modo Demonstracao</strong> — Dados ficticiosos para fins de desenvolvimento. Instale o Power BI Desktop e abra um modelo para conexao real.
+      <button style="margin-left:auto;background:transparent;border:none;color:#ffb74d;cursor:pointer;font-size:14px;" onclick="this.parentElement.style.display='none'">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="main-toolbar">
+      <span class="toolbar-title" id="toolbar-title">
+        <i class="fas fa-database"></i> Todos os Objetos
+      </span>
+
+      <div class="toolbar-filters">
+        <div class="filter-group">
+          <span class="filter-label">Tipo</span>
+          <div class="type-filter">
+            <button class="type-pill active-all" data-type="all">Todos</button>
+            <button class="type-pill" data-type="column">Colunas</button>
+            <button class="type-pill" data-type="measure">Medidas</button>
+            <button class="type-pill" data-type="hierarchy">Hierarquias</button>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-label">Visibilidade</span>
+          <div class="hidden-filter">
+            <button class="hidden-pill active-hidden-all" data-hidden="all">Tudo</button>
+            <button class="hidden-pill" data-hidden="visible">Visiveis</button>
+            <button class="hidden-pill" data-hidden="hidden">Ocultos</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toolbar-sep"></div>
+
+      <!-- Object count -->
+      <span id="obj-count" style="font-size:12px;color:var(--text-muted);">0 objetos</span>
+
+      <div class="toolbar-actions">
+        <button class="btn-toolbar-action btn-toolbar-hide" id="btn-mass-hide" title="Ocultar todos os objetos selecionados">
+          <i class="fas fa-eye-slash"></i> Ocultar Selecao
+        </button>
+        <button class="btn-toolbar-action btn-toolbar-show" id="btn-mass-show" title="Mostrar todos os objetos selecionados">
+          <i class="fas fa-eye"></i> Mostrar Selecao
+        </button>
+        <button class="btn-toolbar-action btn-toolbar-folder" id="btn-mass-folder" title="Mover objetos selecionados para pasta">
+          <i class="fas fa-folder"></i> Mover Pasta
+        </button>
+      </div>
+
+      <!-- Search -->
+      <div class="search-bar">
+        <i class="fas fa-search"></i>
+        <input type="text" id="search-input" placeholder="Buscar objetos...">
+      </div>
+    </div>
+
+    <!-- Batch Action Bar (shown when items selected) -->
+    <div class="batch-bar hidden" id="batch-bar">
+      <i class="fas fa-check-square" style="color:var(--text-accent);"></i>
+      <span class="batch-count" id="batch-count">0 selecionado(s)</span>
+      <div class="navbar-divider" style="margin:0 4px;"></div>
+      <button class="btn-batch btn-batch-hide" id="btn-batch-hide">
+        <i class="fas fa-eye-slash"></i> Ocultar
+      </button>
+      <button class="btn-batch btn-batch-show" id="btn-batch-show">
+        <i class="fas fa-eye"></i> Exibir
+      </button>
+      <button class="btn-batch btn-batch-folder" id="btn-batch-folder">
+        <i class="fas fa-folder"></i> Mover Pasta
+      </button>
+      <button class="btn-batch btn-batch-desc" id="btn-batch-more">
+        <i class="fas fa-ellipsis-h"></i> Mais acoes...
+      </button>
+      <button class="btn-batch" style="color:var(--text-muted);margin-left:auto;" onclick="Grid.clearSelection();document.getElementById('batch-bar').classList.add('hidden');">
+        <i class="fas fa-times"></i> Limpar selecao
+      </button>
+    </div>
+
+    <!-- Grid Container -->
+    <div class="grid-container" id="grid-container" style="position:relative;flex:1;overflow:hidden;">
+      <div id="metadata-grid"></div>
+      <!-- Loading Spinner -->
+      <div class="spinner-overlay hidden" id="grid-spinner">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span class="status-item">
+        <i class="fas fa-info-circle"></i>
+        Clique duplo ou edite diretamente as celulas de Descricao, Formato e Pasta
+      </span>
+      <span style="flex:1;"></span>
+      <span class="status-item" id="status-pending-info"></span>
+    </div>
+
+  </main>
+
+  <!-- ---- DETAIL PANEL ---- -->
+  <aside class="detail-panel collapsed" id="detail-panel">
+    <div class="detail-header">
+      <div class="detail-header-title" id="detail-title">Detalhes</div>
+      <button class="btn-close-panel" id="btn-close-detail" title="Fechar painel">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="detail-content" id="detail-content">
+      <div class="detail-empty">
+        <i class="fas fa-mouse-pointer"></i>
+        <span>Selecione um objeto para ver detalhes</span>
+      </div>
+    </div>
+
+    <div class="detail-footer">
+      <button class="btn-detail-save" id="btn-detail-save" disabled>
+        <i class="fas fa-check"></i> Aplicar Edicoes
+      </button>
+    </div>
+  </aside>
+
+</div>
+
+<!-- Context menu for sidebar tables -->
+<div id="sidebar-context-menu" class="sidebar-context-menu hidden">
+  <button type="button" class="sidebar-context-item" id="ctx-rename-table">
+    <i class="fas fa-pen"></i> Renomear
+  </button>
+  <button type="button" class="sidebar-context-item" id="ctx-toggle-hide-table">
+    <i class="fas fa-eye-slash"></i> Ocultar Tabela
+  </button>
+  <button type="button" class="sidebar-context-item danger" id="ctx-delete-table">
+    <i class="fas fa-trash"></i> Excluir
+  </button>
+</div>
+
+<!-- ====================================================
+     TOAST CONTAINER
+     ==================================================== -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ====================================================
+     MODAL: CONNECT
+     ==================================================== -->
+<div class="modal fade" id="connectModal" tabindex="-1" aria-labelledby="connectModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="connectModalLabel">
+          <i class="fas fa-plug me-2" style="color:var(--primary-light);"></i>
+          Conectar ao Modelo Power BI
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Connection Mode Tabs -->
+        <ul class="nav nav-tabs mb-0" id="connTabs">
+          <li class="nav-item">
+            <a class="nav-link active" data-bs-toggle="tab" href="#tab-local">
+              <i class="fas fa-desktop me-1"></i> Power BI Desktop
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" data-bs-toggle="tab" href="#tab-remote">
+              <i class="fas fa-cloud me-1"></i> Power BI Service
+            </a>
+          </li>
+        </ul>
+
+        <div class="tab-content">
+          <!-- Local Tab -->
+          <div class="tab-pane fade show active" id="tab-local">
+            <input type="radio" name="conn-mode" value="local" checked style="display:none;">
+            <div class="alert-info-dark mb-3">
+              <i class="fas fa-info-circle me-2"></i>
+              Detecta automaticamente o Power BI Desktop aberto no computador.
+              Se nao encontrar, usa o <strong>modo demonstracao</strong> com dados de exemplo.
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Porta manual (opcional)</label>
+              <input type="number" class="form-control" id="local-port" placeholder="Deixe vazio para deteccao automatica">
+              <div class="form-text">A porta e detectada automaticamente. Use apenas se souber a porta exata.</div>
+            </div>
+          </div>
+
+          <!-- Remote Tab -->
+          <div class="tab-pane fade" id="tab-remote">
+            <input type="radio" name="conn-mode" value="remote" style="display:none;">
+            <div class="mb-3">
+              <label class="form-label">Workspace (XMLA Endpoint) <span style="color:var(--danger);">*</span></label>
+              <input type="text" class="form-control" id="remote-workspace" placeholder="Ex: MeuWorkspace">
+              <div class="form-text">Nome do workspace no Power BI Service</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nome do Modelo</label>
+              <input type="text" class="form-control" id="remote-model" placeholder="Ex: ContosoRetail">
+            </div>
+            <div class="row">
+              <div class="col-6 mb-3">
+                <label class="form-label">Usuario (Azure AD)</label>
+                <input type="text" class="form-control" id="remote-user" placeholder="usuario@empresa.com">
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Senha</label>
+                <input type="password" class="form-control" id="remote-pass" placeholder="••••••••">
+              </div>
+            </div>
+            <div class="alert-info-dark">
+              <i class="fas fa-shield-alt me-2"></i>
+              Requer licenca Power BI Premium ou Premium Per User (PPU) com XMLA habilitado.
+            </div>
+          </div>
+        </div>
+
+        <!-- Handle tab click to set radio -->
+        <script>
+          document.getElementById('connTabs').addEventListener('click', (e) => {
+            const href = e.target.closest('a')?.getAttribute('href');
+            if (href === '#tab-local') document.querySelector('input[value=local]').checked = true;
+            if (href === '#tab-remote') document.querySelector('input[value=remote]').checked = true;
+          });
+        </script>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-do-connect">
+          <i class="fas fa-plug me-1"></i> Conectar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     MODAL: BATCH EDIT
+     ==================================================== -->
+<div class="modal fade" id="batchModal" tabindex="-1" aria-labelledby="batchModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="batchModalLabel">
+          <i class="fas fa-edit me-2" style="color:var(--primary-light);"></i>
+          Edicao em Lote
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <div class="alert-info-dark mb-3">
+          <i class="fas fa-check-square me-2"></i>
+          <strong><span id="batch-modal-count">0</span></strong> objeto(s) selecionado(s):
+          <span id="batch-breakdown" style="color:var(--text-muted);"></span>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Acao</label>
+          <select class="form-select" id="batch-action">
+            <option value="hide">Ocultar objetos</option>
+            <option value="show">Exibir objetos (remover ocultacao)</option>
+            <option value="folder">Definir pasta de exibicao</option>
+            <option value="clearFolder">Limpar pasta de exibicao</option>
+            <option value="description">Definir descricao</option>
+          </select>
+        </div>
+
+        <!-- Folder input (shown for folder action) -->
+        <div id="batch-folder-row" style="display:none;" class="mb-3">
+          <label class="form-label">Nova pasta de exibicao</label>
+          <input type="text" class="form-control" id="batch-folder-value" list="batch-folder-suggestions" placeholder="Ex: Financas\KPIs">
+          <datalist id="batch-folder-suggestions"></datalist>
+          <div class="form-text">Use \ para subpastas. Voce pode escolher uma pasta existente da lista.</div>
+        </div>
+
+        <!-- Description input (shown for description action) -->
+        <div id="batch-desc-row" style="display:none;" class="mb-3">
+          <label class="form-label">Nova descricao</label>
+          <textarea class="form-control" id="batch-desc-value" rows="3" placeholder="Descricao para todos os objetos selecionados..."></textarea>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-batch-execute">
+          <i class="fas fa-play me-1"></i> Aplicar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     MODAL: DAX VIEWER
+     ==================================================== -->
+<div class="modal fade" id="daxModal" tabindex="-1" aria-labelledby="daxModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="daxModalLabel">
+          <i class="fas fa-code me-2" style="color:#dcdcaa;"></i>
+          <span id="dax-modal-title">Expressao DAX</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <pre id="dax-content" style="
+          font-family: 'Consolas','Courier New',monospace;
+          font-size: 13px;
+          background: var(--bg-dark);
+          color: #dcdcaa;
+          padding: 16px;
+          border-radius: var(--radius);
+          border: 1px solid var(--border-color);
+          max-height: 400px;
+          overflow-y: auto;
+          white-space: pre-wrap;
+          word-break: break-word;
+          margin: 0;
+        "></pre>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button type="button" class="btn btn-outline-secondary" id="btn-copy-dax">
+          <i class="fas fa-copy me-1"></i> Copiar DAX
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     MODAL: CONFIRM
+     ==================================================== -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirm-title">Confirmar</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message" style="color:var(--text-secondary);font-size:14px;"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="confirm-ok-btn">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================
+     SCRIPTS
+     ==================================================== -->
+<!-- Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Tabulator 6 -->
+<script src="https://unpkg.com/tabulator-tables@6.2.1/dist/js/tabulator.min.js"></script>
+
+<!-- App Scripts (order matters) -->
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/batch.js"></script>
+
+</body>
+</html>
