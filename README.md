@@ -23,7 +23,7 @@ Importante:
 - Power BI Desktop instalado e com um arquivo aberto
 - Python 3.13
 
-## Como rodar (mais facil)
+## Como rodar
 
 Na raiz do projeto:
 
@@ -77,13 +77,16 @@ Depois reinicie o backend.
 
 ## "pythonnet/AMO nao disponivel..."
 
-A DLL do TOM nao foi encontrada.
+A DLL do TOM nao foi encontrada. O `start.bat` tenta baixa-la automaticamente do NuGet na primeira execucao e salva em `tom_libs/`.
 
-Se precisar, defina o caminho manualmente:
+Se o download automatico falhar (sem internet, proxy, etc.), defina o caminho manualmente antes de rodar:
 
 ```powershell
 $env:TOM_ASSEMBLY_PATH = "C:\caminho\Microsoft.AnalysisServices.Tabular.dll"
+.\start.bat
 ```
+
+Ou instale o Power BI Desktop no computador — as DLLs serao detectadas automaticamente.
 
 ## Arquivos principais
 

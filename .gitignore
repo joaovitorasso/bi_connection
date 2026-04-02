@@ -1,0 +1,8 @@
+tom_libs/
+backend/.venv/
+backend/__pycache__/
+backend/app/**/__pycache__/
+*.pyc
+*.pyo
+
+PROMPT.md
