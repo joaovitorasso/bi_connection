@@ -1,4 +1,4 @@
-# Power BI Metadata Editor
+# Power BI Editor
 
 Editor web para metadados de modelos Power BI.
 
@@ -57,37 +57,6 @@ python main.py
 
 Enquanto voce nao salvar, tudo fica como alteracao pendente.
 
-## Erros comuns
-
-## "Power BI Desktop nao encontrado. Usando modo demonstracao."
-
-- Abra o Power BI Desktop com o arquivo carregado.
-- Aguarde terminar de carregar.
-- Tente conectar novamente.
-
-## "No module named 'clr'"
-
-Instale o `pythonnet`:
-
-```powershell
-python -m pip install pythonnet==3.0.5
-```
-
-Depois reinicie o backend.
-
-## "pythonnet/AMO nao disponivel..."
-
-A DLL do TOM nao foi encontrada. O `start.bat` tenta baixa-la automaticamente do NuGet na primeira execucao e salva em `tom_libs/`.
-
-Se o download automatico falhar (sem internet, proxy, etc.), defina o caminho manualmente antes de rodar:
-
-```powershell
-$env:TOM_ASSEMBLY_PATH = "C:\caminho\Microsoft.AnalysisServices.Tabular.dll"
-.\start.bat
-```
-
-Ou instale o Power BI Desktop no computador — as DLLs serao detectadas automaticamente.
-
 ## Arquivos principais
 
 - `backend/main.py`: inicializacao da API
@@ -95,8 +64,3 @@ Ou instale o Power BI Desktop no computador — as DLLs serao detectadas automat
 - `backend/app/services/metadata_service.py`: cache e commit de alteracoes
 - `frontend/index.html`: tela principal
 - `frontend/js/app.js`: fluxo da interface
-
-## Observacao
-
-Este projeto nao depende de MCP e o README foi mantido sem essa etapa.
-
